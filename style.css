@@ -1,0 +1,27 @@
+body {
+  font-family: Arial;
+  text-align: center;
+  background-color: #f2f2f2;
+}
+
+button {
+  padding: 10px 15px;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  background-color: #4CAF50;
+  color: white;
+}
+
+button.completed {
+  background-color: red;
+}
+
+.hidden {
+  display: none;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+}
