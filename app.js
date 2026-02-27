@@ -33,19 +33,18 @@ async function startDay(dayNumber) {
   const text = await response.text();
 
   const rows = text.trim().split("\n").slice(1);
-
   const selectedRows = rows.slice(startIndex, endIndex);
 
-currentSentences = selectedRows.map(row => {
-  const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+  currentSentences = selectedRows.map(row => {
+    const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
 
-  return {
-  question: cols[0].replace(/"/g, "").trim(),
-  answer: cols[1].replace(/"/g, "").trim(),
-  question_korean: cols[2].replace(/"/g, "").trim(),
-  number: cols[3].replace(/"/g, "").trim()
-};
-});
+    return {
+      question: cols[0].replace(/"/g, "").trim(),
+      answer: cols[1].replace(/"/g, "").trim(),
+      question_korean: cols[2].replace(/"/g, "").trim(),
+      number: cols[3].replace(/"/g, "").trim()
+    };
+  });
 
   currentPage = 0;
   renderWritingPage();
@@ -92,10 +91,11 @@ function renderWritingPage() {
   content.appendChild(navButton);
 }
 
+/* 🔥 여기 수정됨 */
 function showAnswer(index) {
   const item = currentSentences[index];
   document.getElementById(`answer-${index}`).innerText =
-    `정답: ${item.answer} (${item.number})`;
+    `정답: ${item.question} (${item.number})`;
 }
 
 function goHome() {
@@ -109,7 +109,6 @@ let shuffledAnswers = [];
 function renderLCPage() {
   lcPage = 0;
 
-  // 오늘 정답 10개 섞기
   shuffledAnswers = [...currentSentences]
     .map(item => item.answer)
     .sort(() => Math.random() - 0.5);
@@ -212,7 +211,6 @@ function completeDay() {
 
   goHome();
 
-  // 새로고침 없이 버튼 상태만 갱신
   const buttons = document.querySelectorAll("#day-buttons button");
   buttons[currentDayNumber - 1].classList.add("completed");
   buttons[currentDayNumber - 1].innerText += " ❌";
