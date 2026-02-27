@@ -18,8 +18,13 @@ let currentSentences = [];
 let currentPage = 0;
 let currentDayNumber = 0;
 
+/* ===========================
+   📥 Day 시작
+=========================== */
+
 async function startDay(dayNumber) {
   currentDayNumber = dayNumber;
+
   document.getElementById("main-screen").classList.add("hidden");
   document.getElementById("study-screen").classList.remove("hidden");
   document.getElementById("day-title").innerText = "Day " + dayNumber;
@@ -31,13 +36,11 @@ async function startDay(dayNumber) {
 
   const response = await fetch(`data/day${sheetIndex}.csv`);
   const text = await response.text();
-
   const rows = text.trim().split("\n").slice(1);
   const selectedRows = rows.slice(startIndex, endIndex);
 
   currentSentences = selectedRows.map(row => {
     const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-
     return {
       question: cols[0].replace(/"/g, "").trim(),
       answer: cols[1].replace(/"/g, "").trim(),
@@ -47,8 +50,26 @@ async function startDay(dayNumber) {
   });
 
   currentPage = 0;
+
+  // 🔵 오늘 학습 번호 먼저 표시
+  showTodayNumbers();
+
+  // 🔵 그 다음 영작 페이지 이동
   renderWritingPage();
 }
+
+/* ===========================
+   🔢 오늘 문제 번호 표시
+=========================== */
+
+function showTodayNumbers() {
+  const numbers = currentSentences.map(item => item.number).join(", ");
+  alert("오늘 학습할 문제 번호:\n\n" + numbers);
+}
+
+/* ===========================
+   ✏️ 영작 페이지
+=========================== */
 
 function renderWritingPage() {
   const content = document.getElementById("content");
@@ -59,55 +80,78 @@ function renderWritingPage() {
   const pageSentences = currentSentences.slice(start, end);
 
   pageSentences.forEach((item, index) => {
+    const realIndex = start + index;
+
     const div = document.createElement("div");
     div.style.marginBottom = "20px";
 
     div.innerHTML = `
-      <p><strong>${start + index + 1}. ${item.question_korean}</strong></p>
-      <input type="text" id="input-${start + index}" style="width:80%; padding:5px;">
+      <p><strong>${realIndex + 1}. ${item.question_korean}</strong></p>
+      <input type="text" style="width:80%; padding:5px;">
       <br>
-      <button onclick="showAnswer(${start + index})">정답 보기</button>
-      <p id="answer-${start + index}" style="color:blue;"></p>
+      <button id="btn-${realIndex}" onclick="toggleAnswer(${realIndex})">정답 보기</button>
+      <p id="answer-${realIndex}" style="color:blue;"></p>
     `;
 
     content.appendChild(div);
   });
 
-  const navButton = document.createElement("button");
+  const navDiv = document.createElement("div");
+  navDiv.style.marginTop = "20px";
 
-  if (currentPage === 0) {
-    navButton.innerText = "다음 5문장 →";
-    navButton.onclick = () => {
-      currentPage = 1;
-      renderWritingPage();
-    };
-  } else {
-    navButton.innerText = "LC 매칭 시작 →";
-    navButton.onclick = () => {
-      renderLCPage();
-    };
-  }
+  const prevBtn = document.createElement("button");
+  prevBtn.innerText = "← 1~5";
+  prevBtn.onclick = () => {
+    currentPage = 0;
+    renderWritingPage();
+  };
 
-  content.appendChild(navButton);
+  const nextBtn = document.createElement("button");
+  nextBtn.innerText = "6~10 →";
+  nextBtn.onclick = () => {
+    currentPage = 1;
+    renderWritingPage();
+  };
+
+  const lcBtn = document.createElement("button");
+  lcBtn.innerText = "LC 매칭 시작 →";
+  lcBtn.onclick = renderLCPage;
+
+  navDiv.appendChild(prevBtn);
+  navDiv.appendChild(nextBtn);
+  navDiv.appendChild(document.createElement("br"));
+  navDiv.appendChild(document.createElement("br"));
+  navDiv.appendChild(lcBtn);
+
+  content.appendChild(navDiv);
 }
 
-/* 🔥 여기 수정됨 */
-function showAnswer(index) {
+/* 🔵 정답 ON/OFF 기능 */
+function toggleAnswer(index) {
   const item = currentSentences[index];
-  document.getElementById(`answer-${index}`).innerText =
-    `정답: ${item.question} (${item.number})`;
+  const answerElement = document.getElementById(`answer-${index}`);
+  const buttonElement = document.getElementById(`btn-${index}`);
+
+  if (answerElement.innerText === "") {
+    answerElement.innerText = `정답: ${item.question} (${item.number})`;
+    buttonElement.innerText = "정답 숨기기";
+  } else {
+    answerElement.innerText = "";
+    buttonElement.innerText = "정답 보기";
+  }
 }
 
-function goHome() {
-  document.getElementById("study-screen").classList.add("hidden");
-  document.getElementById("main-screen").classList.remove("hidden");
-}
+/* ===========================
+   🎧 LC 파트
+=========================== */
 
 let lcPage = 0;
 let shuffledAnswers = [];
+let lcSubmitted = false;
 
 function renderLCPage() {
   lcPage = 0;
+  lcSubmitted = false;
 
   shuffledAnswers = [...currentSentences]
     .map(item => item.answer)
@@ -119,12 +163,15 @@ function renderLCPage() {
 function renderLCQuestions() {
   const content = document.getElementById("content");
   content.innerHTML = "";
+  lcSubmitted = false;
 
   const start = lcPage * 5;
   const end = start + 5;
   const pageQuestions = currentSentences.slice(start, end);
 
   pageQuestions.forEach((item, index) => {
+    const realIndex = start + index;
+
     const div = document.createElement("div");
     div.style.marginBottom = "20px";
 
@@ -133,12 +180,12 @@ function renderLCQuestions() {
     ).join("");
 
     div.innerHTML = `
-      <p><strong>${start + index + 1}. ${item.question}</strong></p>
-      <select id="lc-${start + index}">
+      <p><strong>${realIndex + 1}. ${item.question}</strong></p>
+      <select id="lc-${realIndex}">
         <option value="">선택하세요</option>
         ${options}
       </select>
-      <p id="lc-result-${start + index}"></p>
+      <p id="lc-result-${realIndex}"></p>
     `;
 
     content.appendChild(div);
@@ -151,23 +198,18 @@ function renderLCQuestions() {
 }
 
 function checkLCAnswers() {
+  if (lcSubmitted) return;   // 🔥 중복 방지
+  lcSubmitted = true;
+
   const start = lcPage * 5;
   const end = start + 5;
 
   let score = 0;
-  let allAnswered = true;
 
   for (let i = start; i < end; i++) {
     const selected = document.getElementById(`lc-${i}`).value;
     const result = document.getElementById(`lc-result-${i}`);
     const correctAnswer = currentSentences[i].answer;
-
-    if (!selected) {
-      result.innerText = "선택하세요";
-      result.style.color = "orange";
-      allAnswered = false;
-      continue;
-    }
 
     if (selected === correctAnswer) {
       result.innerText = "정답 ✅";
@@ -178,8 +220,6 @@ function checkLCAnswers() {
       result.style.color = "red";
     }
   }
-
-  if (!allAnswered) return;
 
   const content = document.getElementById("content");
 
@@ -197,12 +237,23 @@ function checkLCAnswers() {
     };
     content.appendChild(nextBtn);
   } else {
+    const numberBtn = document.createElement("button");
+    numberBtn.innerText = "오늘 사용된 number 보기";
+    numberBtn.onclick = showTodayNumbers;
+
     const finishBtn = document.createElement("button");
     finishBtn.innerText = "Day 완료";
     finishBtn.onclick = completeDay;
+
+    content.appendChild(document.createElement("br"));
+    content.appendChild(numberBtn);
     content.appendChild(finishBtn);
   }
 }
+
+/* ===========================
+   ✅ Day 완료
+=========================== */
 
 function completeDay() {
   localStorage.setItem("day" + currentDayNumber, "completed");
@@ -214,4 +265,9 @@ function completeDay() {
   const buttons = document.querySelectorAll("#day-buttons button");
   buttons[currentDayNumber - 1].classList.add("completed");
   buttons[currentDayNumber - 1].innerText += " ❌";
+}
+
+function goHome() {
+  document.getElementById("study-screen").classList.add("hidden");
+  document.getElementById("main-screen").classList.remove("hidden");
 }
