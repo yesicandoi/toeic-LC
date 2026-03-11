@@ -10,7 +10,7 @@ Why don't we stop by the office cafeteria on our way to the workshop?,"Sure, we 
 "Should I deliver these pizzas, or will you?",They're being picked up.,"제가 이 피자들을 배달해야 하나요, 아니면 당신이 하시겠어요?",2회-26
 Do I need to reserve a meeting room?,"Yes, let me show you how.",회의실을 예약해야 할까요?,2회-24
 "I tried updating the Web site, but it didn't work.",Just send me the changes you want.,"웹사이트를 업데이트해 봤는데, 안 됐어요.",2회-18
-Did you hire a new welding specialist?,"Yes, he starts tomorrw.","네, 내일부터 일을 시작해요.",2회-19
+Did you hire a new welding specialist?,"Yes, he starts tomorrw.","용접 전문가를 새로 고용했나요?",2회-19
 Where can I buy a charger for this laptop?,I can order one for you.,이 노트북 충전기는 어디서 살 수 있나요?,2회-23
 What should we do with these brochures?,I'll leave them at the front desk.,이 안내 책자들을 어떻게 할까요?,2회-12
 Can you give me a tour of the property this afternonn?,"Sorry, I won't have time until tommorw.",오늘 오후에 그 건물을 견학시켜 주실 수 있나요?,2회-30
@@ -28,4 +28,5 @@ I ordered some new equipment for the factory.,Great. I can't wait to use it.,공
 There's a nice place to rent on Mercer Street.,I just renewed my current lease.,머서 가에 임대하기에 좋은 곳이 있어요.,3회-19
 Aren't you picking up the clients from the airport?,"No, I believe Tomoko is doing that.",당신이 공항에서 고객들을 모셔올 예정 아닌가요?,3회-30
 Who will lead the new-employee training today?,We're using a recorded video.,오늘 신입 사원 교육은 누가 진행해요?,3회-22
+
 Why is there no flour on the shelf?,Because it's out of stock.,왜 선반에 밀가루가 없죠?,3회-7
