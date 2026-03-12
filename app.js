@@ -23,6 +23,10 @@ let currentDayNumber = 0;
 =========================== */
 
 async function startDay(dayNumber) {
+
+  // 🔴 이전 데이터 초기화
+  currentSentences = [];
+
   currentDayNumber = dayNumber;
 
   document.getElementById("main-screen").classList.add("hidden");
@@ -36,10 +40,21 @@ async function startDay(dayNumber) {
 
   const response = await fetch(`data/day${sheetIndex}.csv`);
   const text = await response.text();
-  const rows = text.trim().split(/\r?\n/).slice(1);
+  const rows = text
+   .trim()
+   .split(/\r?\n/)
+   .slice(1)
+   .filter(row => row.trim() !== "");
   const selectedRows = rows.slice(startIndex, endIndex);
+  if (selectedRows.length === 0) {
+  alert("문제를 불러오지 못했습니다.");
+  goHome();
+  return;
+}
 
-  currentSentences = selectedRows.map(row => {
+  currentSentences = selectedRows
+  .filter(row => row)
+  .map(row => {
     const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
     return {
       question: cols[0].replace(/"/g, "").trim(),
@@ -271,4 +286,5 @@ function goHome() {
   document.getElementById("study-screen").classList.add("hidden");
   document.getElementById("main-screen").classList.remove("hidden");
 }
+
 
