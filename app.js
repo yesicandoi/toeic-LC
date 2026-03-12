@@ -36,7 +36,7 @@ async function startDay(dayNumber) {
 
   const response = await fetch(`data/day${sheetIndex}.csv`);
   const text = await response.text();
-  const rows = text.trim().split("\n").slice(1);
+  const rows = text.trim().split(/\r?\n/).slice(1);
   const selectedRows = rows.slice(startIndex, endIndex);
 
   currentSentences = selectedRows.map(row => {
@@ -271,3 +271,4 @@ function goHome() {
   document.getElementById("study-screen").classList.add("hidden");
   document.getElementById("main-screen").classList.remove("hidden");
 }
+
