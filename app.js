@@ -15,8 +15,13 @@ for (let i = 1; i <= totalDays; i++) {
 }
 
 let currentSentences = [];
-let currentPage = 0;
+let allSentences = {}; // 🔥 number 기준 저장소
+
 let currentDayNumber = 0;
+let mode = "normal";
+
+let bookmarks = new Set();
+let wrongAnswers = new Set();
 
 /* ===========================
    📥 Day 시작
@@ -24,10 +29,10 @@ let currentDayNumber = 0;
 
 async function startDay(dayNumber) {
 
-  // 🔴 이전 데이터 초기화
-  currentSentences = [];
-
   currentDayNumber = dayNumber;
+  mode = "normal";
+
+  loadStorage();
 
   document.getElementById("main-screen").classList.add("hidden");
   document.getElementById("study-screen").classList.remove("hidden");
@@ -35,256 +40,243 @@ async function startDay(dayNumber) {
 
   const sheetIndex = Math.floor((dayNumber - 1) / 3) + 1;
   const dayOffset = (dayNumber - 1) % 3;
+
   const startIndex = dayOffset * 10;
   const endIndex = startIndex + 10;
 
   const response = await fetch(`data/day${sheetIndex}.csv`);
   const text = await response.text();
-  const rows = text
-   .trim()
-   .split(/\r?\n/)
-   .slice(1)
-   .filter(row => row.trim() !== "");
-  const selectedRows = rows.slice(startIndex, endIndex);
-  if (selectedRows.length === 0) {
-  alert("문제를 불러오지 못했습니다.");
-  goHome();
-  return;
-}
 
-  currentSentences = selectedRows
-  .filter(row => row)
-  .map(row => {
+  const rows = text
+    .trim()
+    .split(/\r?\n/)
+    .slice(1)
+    .filter(r => r.trim() !== "");
+
+  const selectedRows = rows.slice(startIndex, endIndex);
+
+  currentSentences = selectedRows.map(row => {
     const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-    return {
+
+    const item = {
       question: cols[0].replace(/"/g, "").trim(),
       answer: cols[1].replace(/"/g, "").trim(),
       question_korean: cols[2].replace(/"/g, "").trim(),
       number: cols[3].replace(/"/g, "").trim()
     };
+
+    allSentences[item.number] = item; // 🔥 누적 저장
+    return item;
   });
 
-  currentPage = 0;
+  saveAllSentences();
 
-  // 🔵 오늘 학습 번호 먼저 표시
   showTodayNumbers();
-
-  // 🔵 그 다음 영작 페이지 이동
-  renderWritingPage();
+  renderWritingPage(currentSentences);
 }
 
 /* ===========================
-   🔢 오늘 문제 번호 표시
+   💾 저장
+=========================== */
+
+function saveAllSentences() {
+  localStorage.setItem("allSentences", JSON.stringify(allSentences));
+}
+
+function loadAllSentences() {
+  allSentences = JSON.parse(localStorage.getItem("allSentences") || "{}");
+}
+
+function saveStorage() {
+  localStorage.setItem("bookmarks", JSON.stringify([...bookmarks]));
+  localStorage.setItem("wrongAnswers", JSON.stringify([...wrongAnswers]));
+}
+
+function loadStorage() {
+  bookmarks = new Set(JSON.parse(localStorage.getItem("bookmarks") || "[]"));
+  wrongAnswers = new Set(JSON.parse(localStorage.getItem("wrongAnswers") || "[]"));
+  loadAllSentences();
+}
+
+/* ===========================
+   🔢 상단
 =========================== */
 
 function showTodayNumbers() {
-  const numbers = currentSentences.map(item => item.number).join(", ");
-  alert("오늘 학습할 문제 번호:\n\n" + numbers);
+  const numbers = currentSentences.map(i => i.number).join(", ");
+  document.getElementById("today-numbers").innerText =
+    "오늘 문제: " + numbers;
 }
 
 /* ===========================
-   ✏️ 영작 페이지
+   🧠 데이터 가져오기
 =========================== */
 
-function renderWritingPage() {
+function getBookmarkData() {
+  return [...bookmarks]
+    .map(n => allSentences[n])
+    .filter(Boolean);
+}
+
+function getWrongData() {
+  return [...wrongAnswers]
+    .map(n => allSentences[n])
+    .filter(Boolean);
+}
+
+/* ===========================
+   ✏️ 공통 렌더
+=========================== */
+
+function renderWritingPage(data) {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  const start = currentPage * 5;
-  const end = start + 5;
-  const pageSentences = currentSentences.slice(start, end);
+  if (!data || data.length === 0) {
+    content.innerHTML = "<p>문제가 없습니다</p>";
+    return;
+  }
 
-  pageSentences.forEach((item, index) => {
-    const realIndex = start + index;
-
+  data.forEach((item, idx) => {
     const div = document.createElement("div");
-    div.style.marginBottom = "20px";
 
     div.innerHTML = `
-      <p><strong>${realIndex + 1}. ${item.question_korean}</strong></p>
-      <input type="text" style="width:80%; padding:5px;">
+      <p><strong>${idx + 1}. ${item.question_korean}</strong></p>
+      <input type="text" style="width:80%;">
       <br>
-      <button id="btn-${realIndex}" onclick="toggleAnswer(${realIndex})">정답 보기</button>
-      <p id="answer-${realIndex}" style="color:blue;"></p>
+      <button onclick="toggleBookmark('${item.number}')">
+        ${bookmarks.has(item.number) ? "★ 북마크됨" : "☆ 북마크"}
+      </button>
+      <button onclick="toggleAnswer('${item.number}')">정답</button>
+      <p id="answer-${item.number}"></p>
     `;
 
     content.appendChild(div);
   });
 
-  const navDiv = document.createElement("div");
-  navDiv.style.marginTop = "20px";
+  const nav = document.createElement("div");
 
-  const prevBtn = document.createElement("button");
-  prevBtn.innerText = "← 1~5";
-  prevBtn.onclick = () => {
-    currentPage = 0;
-    renderWritingPage();
-  };
+  nav.innerHTML = `
+    <button onclick="renderLCPage(currentViewData)">LC</button>
+    <button onclick="goHome()">← 뒤로가기</button>
+  `;
 
-  const nextBtn = document.createElement("button");
-  nextBtn.innerText = "6~10 →";
-  nextBtn.onclick = () => {
-    currentPage = 1;
-    renderWritingPage();
-  };
+  content.appendChild(nav);
 
-  const lcBtn = document.createElement("button");
-  lcBtn.innerText = "LC 매칭 시작 →";
-  lcBtn.onclick = renderLCPage;
-
-  navDiv.appendChild(prevBtn);
-  navDiv.appendChild(nextBtn);
-  navDiv.appendChild(document.createElement("br"));
-  navDiv.appendChild(document.createElement("br"));
-  navDiv.appendChild(lcBtn);
-
-  content.appendChild(navDiv);
-}
-
-/* 🔵 정답 ON/OFF 기능 */
-function toggleAnswer(index) {
-  const item = currentSentences[index];
-  const answerElement = document.getElementById(`answer-${index}`);
-  const buttonElement = document.getElementById(`btn-${index}`);
-
-  if (answerElement.innerText === "") {
-    answerElement.innerText = `정답: ${item.question} (${item.number})`;
-    buttonElement.innerText = "정답 숨기기";
-  } else {
-    answerElement.innerText = "";
-    buttonElement.innerText = "정답 보기";
-  }
+  currentViewData = data; // 🔥 현재 데이터 유지
 }
 
 /* ===========================
-   🎧 LC 파트
+   🎧 LC
 =========================== */
 
-let lcPage = 0;
-let shuffledAnswers = [];
-let lcSubmitted = false;
+let currentViewData = [];
 
-function renderLCPage() {
-  lcPage = 0;
-  lcSubmitted = false;
-
-  shuffledAnswers = [...currentSentences]
-    .map(item => item.answer)
-    .sort(() => Math.random() - 0.5);
-
-  renderLCQuestions();
-}
-
-function renderLCQuestions() {
+function renderLCPage(data) {
   const content = document.getElementById("content");
   content.innerHTML = "";
-  lcSubmitted = false;
 
-  const start = lcPage * 5;
-  const end = start + 5;
-  const pageQuestions = currentSentences.slice(start, end);
+  const shuffled = data.map(i => i.answer).sort(() => Math.random() - 0.5);
 
-  pageQuestions.forEach((item, index) => {
-    const realIndex = start + index;
+  data.forEach(item => {
 
-    const div = document.createElement("div");
-    div.style.marginBottom = "20px";
-
-    let options = shuffledAnswers.map(answer =>
-      `<option value="${answer}">${answer}</option>`
+    const options = shuffled.map(a =>
+      `<option value="${a}">${a}</option>`
     ).join("");
 
+    const div = document.createElement("div");
+
     div.innerHTML = `
-      <p><strong>${realIndex + 1}. ${item.question}</strong></p>
-      <select id="lc-${realIndex}">
-        <option value="">선택하세요</option>
+      <p>${item.question}</p>
+      <select id="lc-${item.number}">
+        <option value="">선택</option>
         ${options}
       </select>
-      <p id="lc-result-${realIndex}"></p>
+      <p id="result-${item.number}"></p>
     `;
 
     content.appendChild(div);
   });
 
-  const checkBtn = document.createElement("button");
-  checkBtn.innerText = "채점하기";
-  checkBtn.onclick = checkLCAnswers;
-  content.appendChild(checkBtn);
+  const btns = document.createElement("div");
+
+  btns.innerHTML = `
+    <button onclick="checkLC(currentViewData)">채점</button>
+    <button onclick="renderWritingPage(currentViewData)">← 뒤로</button>
+  `;
+
+  content.appendChild(btns);
 }
 
-function checkLCAnswers() {
-  if (lcSubmitted) return;   // 🔥 중복 방지
-  lcSubmitted = true;
+function checkLC(data) {
+  data.forEach(item => {
+    const selected = document.getElementById(`lc-${item.number}`).value;
+    const result = document.getElementById(`result-${item.number}`);
 
-  const start = lcPage * 5;
-  const end = start + 5;
-
-  let score = 0;
-
-  for (let i = start; i < end; i++) {
-    const selected = document.getElementById(`lc-${i}`).value;
-    const result = document.getElementById(`lc-result-${i}`);
-    const correctAnswer = currentSentences[i].answer;
-
-    if (selected === correctAnswer) {
-      result.innerText = "정답 ✅";
-      result.style.color = "green";
-      score++;
+    if (selected === item.answer) {
+      result.innerText = "정답";
     } else {
-      result.innerText = `오답 ❌ (정답: ${correctAnswer})`;
-      result.style.color = "red";
+      result.innerText = "오답";
+      wrongAnswers.add(item.number);
     }
-  }
+  });
 
-  const content = document.getElementById("content");
-
-  const scoreText = document.createElement("p");
-  scoreText.innerHTML = `<strong>점수: ${score} / 5</strong>`;
-  scoreText.style.marginTop = "15px";
-  content.appendChild(scoreText);
-
-  if (lcPage === 0) {
-    const nextBtn = document.createElement("button");
-    nextBtn.innerText = "다음 5문제 →";
-    nextBtn.onclick = () => {
-      lcPage = 1;
-      renderLCQuestions();
-    };
-    content.appendChild(nextBtn);
-  } else {
-    const numberBtn = document.createElement("button");
-    numberBtn.innerText = "오늘 사용된 number 보기";
-    numberBtn.onclick = showTodayNumbers;
-
-    const finishBtn = document.createElement("button");
-    finishBtn.innerText = "Day 완료";
-    finishBtn.onclick = completeDay;
-
-    content.appendChild(document.createElement("br"));
-    content.appendChild(numberBtn);
-    content.appendChild(finishBtn);
-  }
+  saveStorage();
 }
 
 /* ===========================
-   ✅ Day 완료
+   기능
 =========================== */
 
-function completeDay() {
-  localStorage.setItem("day" + currentDayNumber, "completed");
-
-  alert("Day 완료!");
-
-  goHome();
-
-  const buttons = document.querySelectorAll("#day-buttons button");
-  buttons[currentDayNumber - 1].classList.add("completed");
-  buttons[currentDayNumber - 1].innerText += " ❌";
+function toggleBookmark(number) {
+  if (bookmarks.has(number)) {
+    bookmarks.delete(number);
+  } else {
+    bookmarks.add(number);
+  }
+  saveStorage();
+  renderWritingPage(currentViewData);
 }
+
+function toggleAnswer(number) {
+  const item = allSentences[number];
+  const el = document.getElementById(`answer-${number}`);
+  el.innerText = el.innerText ? "" : item.question;
+}
+
+/* ===========================
+   📌 메인 버튼용
+=========================== */
+
+function openBookmarks() {
+  loadStorage();
+
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("study-screen").classList.remove("hidden");
+
+  document.getElementById("day-title").innerText = "📌 북마크";
+
+  const data = getBookmarkData();
+  renderWritingPage(data);
+}
+
+function openWrong() {
+  loadStorage();
+
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("study-screen").classList.remove("hidden");
+
+  document.getElementById("day-title").innerText = "❌ 오답노트";
+
+  const data = getWrongData();
+  renderWritingPage(data);
+}
+
+/* ===========================
+   기타
+=========================== */
 
 function goHome() {
   document.getElementById("study-screen").classList.add("hidden");
   document.getElementById("main-screen").classList.remove("hidden");
 }
-
-
