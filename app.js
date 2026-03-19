@@ -15,26 +15,60 @@ for (let i = 1; i <= totalDays; i++) {
 }
 
 /* ===========================
-   전역 상태
+   상태
 =========================== */
 
 let currentSentences = [];
-let currentViewData = [];
-let allSentences = {};
-
-let bookmarks = new Set();
-
 let currentDayNumber = 0;
+let isBookmarkMode = false;
+
+let pageStep = 0; 
+
+let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
 
 /* ===========================
-   📥 Day 시작
+   공통 데이터 (전체 문제 저장용)
+=========================== */
+
+let allSentences = {};
+
+/* ===========================
+   CSV 로딩 (전체 데이터용)
+=========================== */
+
+async function loadAllData() {
+  allSentences = {};
+
+  for (let i = 1; i <= 9; i++) {
+    const res = await fetch(`data/day${i}.csv`);
+    const text = await res.text();
+
+    const rows = text.trim().split(/\r?\n/).slice(1);
+
+    rows.forEach(row => {
+      const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+
+      const item = {
+        question: cols[0].replace(/"/g, "").trim(),
+        answer: cols[1].replace(/"/g, "").trim(),
+        question_korean: cols[2].replace(/"/g, "").trim(),
+        number: cols[3].replace(/"/g, "").trim()
+      };
+
+      allSentences[item.number] = item;
+    });
+  }
+}
+
+/* ===========================
+   Day 시작
 =========================== */
 
 async function startDay(dayNumber) {
 
+  isBookmarkMode = false;
   currentDayNumber = dayNumber;
-
-  loadStorage();
+  pageStep = 0;
 
   document.getElementById("main-screen").classList.add("hidden");
   document.getElementById("study-screen").classList.remove("hidden");
@@ -50,132 +84,175 @@ async function startDay(dayNumber) {
   const response = await fetch(`data/day${sheetIndex}.csv`);
   const text = await response.text();
 
-  const rows = text
-    .trim()
-    .split(/\r?\n/)
-    .slice(1)
-    .filter(r => r.trim() !== "");
-
+  const rows = text.trim().split(/\r?\n/).slice(1);
   const selectedRows = rows.slice(startIndex, endIndex);
 
   currentSentences = selectedRows.map(row => {
     const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
 
-    const item = {
+    return {
       question: cols[0].replace(/"/g, "").trim(),
       answer: cols[1].replace(/"/g, "").trim(),
       question_korean: cols[2].replace(/"/g, "").trim(),
       number: cols[3].replace(/"/g, "").trim()
     };
-
-    allSentences[item.number] = item;
-    return item;
   });
 
-  saveAllSentences();
-
-  showTodayNumbers();
-
-  currentViewData = [...currentSentences]; // 🔥 핵심
-  renderWritingPage();
+  renderPage();
 }
 
 /* ===========================
-   💾 저장
+   📌 북마크 전체 보기 (메인에서 진입)
 =========================== */
 
-function saveAllSentences() {
-  localStorage.setItem("allSentences", JSON.stringify(allSentences));
-}
+async function openBookmarks() {
+  await loadAllData();
 
-function loadAllSentences() {
-  allSentences = JSON.parse(localStorage.getItem("allSentences") || "{}");
-}
+  isBookmarkMode = true;
+  pageStep = 0;
 
-function saveStorage() {
-  localStorage.setItem("bookmarks", JSON.stringify([...bookmarks]));
-}
+  currentSentences = bookmarks
+    .map(n => allSentences[n])
+    .filter(Boolean);
 
-function loadStorage() {
-  bookmarks = new Set(JSON.parse(localStorage.getItem("bookmarks") || "[]"));
-  loadAllSentences();
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("study-screen").classList.remove("hidden");
+
+  document.getElementById("day-title").innerText = "📌 북마크";
+
+  renderPage();
 }
 
 /* ===========================
-   🔢 상단 표시
+   🎲 랜덤 10개
 =========================== */
 
-function showTodayNumbers() {
-  const numbers = currentSentences.map(i => i.number).join(", ");
-  document.getElementById("today-numbers").innerText =
-    "오늘 문제: " + numbers;
+async function startRandom10() {
+  await loadAllData();
+
+  isBookmarkMode = false;
+  pageStep = 0;
+
+  const all = Object.values(allSentences);
+
+  currentSentences = all
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 10);
+
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("study-screen").classList.remove("hidden");
+
+  document.getElementById("day-title").innerText = "🎲 랜덤 10문제";
+
+  renderPage();
 }
 
 /* ===========================
-   ✏️ Writing
+   페이지 컨트롤
 =========================== */
 
-function renderWritingPage() {
+function renderPage() {
+  if (pageStep === 0) renderIntroPage();
+  else if (pageStep === 1) renderStudyPage(0, 5);
+  else if (pageStep === 2) renderStudyPage(5, 10);
+  else if (pageStep === 3) renderLCPage(0, 5);
+  else if (pageStep === 4) renderLCPage(5, 10);
+  else if (pageStep === 5) renderReviewPage();
+}
+
+/* ===========================
+   1️⃣ 문제 목록
+=========================== */
+
+function renderIntroPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  if (!currentViewData.length) {
-    content.innerHTML = "<p>문제가 없습니다</p>";
-    return;
+  if (!isBookmarkMode) {
+    const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
+    const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
+
+    content.innerHTML = `
+      <p><strong>오늘 문제</strong></p>
+      <p>1줄: ${first}</p>
+      <p>2줄: ${second}</p>
+    `;
   }
 
-  currentViewData.forEach((item, idx) => {
+  const btn = document.createElement("button");
+  btn.innerText = "학습 시작 →";
+  btn.onclick = () => {
+    pageStep = 1;
+    renderPage();
+  };
+
+  content.appendChild(btn);
+}
+
+/* ===========================
+   2️⃣ 3️⃣ 학습 페이지
+=========================== */
+
+function renderStudyPage(start, end) {
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  const data = currentSentences.slice(start, end);
+
+  data.forEach(item => {
+
+    const isMarked = bookmarks.includes(item.number);
+
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${idx + 1}. ${item.question_korean}</strong></p>
-      <input type="text" style="width:80%;">
-      <br>
+      <p><strong>${item.number}번. ${item.question_korean}</strong></p>
+      <button onclick="toggleAnswer('${item.number}')">정답 보기</button>
       <button onclick="toggleBookmark('${item.number}')">
-        ${bookmarks.has(item.number) ? "★ 북마크됨" : "☆ 북마크"}
+        ${isMarked ? "⭐" : "☆"}
       </button>
-      <button onclick="toggleAnswer('${item.number}')">정답</button>
-      <p id="answer-${item.number}"></p>
+      <p id="answer-${item.number}" style="color:blue;"></p>
     `;
 
     content.appendChild(div);
   });
 
-  const nav = document.createElement("div");
+  const btn = document.createElement("button");
 
-  nav.innerHTML = `
-    <button onclick="renderLCPage()">LC</button>
-    <br><br>
-    <button onclick="goHome()">← 뒤로가기</button>
-  `;
+  if (pageStep === 1) {
+    btn.innerText = "다음 (6~10) →";
+    btn.onclick = () => { pageStep = 2; renderPage(); };
+  } else {
+    btn.innerText = "LC 시작 →";
+    btn.onclick = () => { pageStep = 3; renderPage(); };
+  }
 
-  content.appendChild(nav);
+  content.appendChild(btn);
 }
 
 /* ===========================
    🎧 LC
 =========================== */
 
-let shuffledAnswers = [];
-
-function renderLCPage() {
+function renderLCPage(start, end) {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  shuffledAnswers = currentViewData
+  const data = currentSentences.slice(start, end);
+  const shuffled = [...currentSentences]
     .map(i => i.answer)
     .sort(() => Math.random() - 0.5);
 
-  currentViewData.forEach(item => {
+  data.forEach(item => {
 
-    const options = shuffledAnswers.map(a =>
+    const options = shuffled.map(a =>
       `<option value="${a}">${a}</option>`
     ).join("");
 
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p>${item.question}</p>
+      <p><strong>${item.number}번. ${item.question}</strong></p>
       <select id="lc-${item.number}">
         <option value="">선택</option>
         ${options}
@@ -186,67 +263,74 @@ function renderLCPage() {
     content.appendChild(div);
   });
 
-  const btns = document.createElement("div");
+  const btn = document.createElement("button");
 
-  btns.innerHTML = `
-    <button onclick="checkLC()">채점</button>
-    <button onclick="renderWritingPage()">← 뒤로</button>
-  `;
+  if (pageStep === 3) {
+    btn.innerText = "다음 (6~10) →";
+    btn.onclick = () => { pageStep = 4; renderPage(); };
+  } else {
+    btn.innerText = "오늘 공부 리뷰 →";
+    btn.onclick = () => { pageStep = 5; renderPage(); };
+  }
 
-  content.appendChild(btns);
+  content.appendChild(btn);
 }
 
-function checkLC() {
-  currentViewData.forEach(item => {
-    const selected = document.getElementById(`lc-${item.number}`).value;
-    const result = document.getElementById(`result-${item.number}`);
+/* ===========================
+   5️⃣ 리뷰
+=========================== */
 
-    if (selected === item.answer) {
-      result.innerText = "정답";
-    } else {
-      result.innerText = "오답";
+function renderReviewPage() {
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
+  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
+
+  content.innerHTML = `
+    <p><strong>오늘 공부한 문제</strong></p>
+    <p>1줄: ${first}</p>
+    <p>2줄: ${second}</p>
+  `;
+
+  const finishBtn = document.createElement("button");
+  finishBtn.innerText = "Day 완료";
+
+  finishBtn.onclick = () => {
+    if (!isBookmarkMode) {
+      localStorage.setItem("day" + currentDayNumber, "completed");
+
+      const buttons = document.querySelectorAll("#day-buttons button");
+      buttons[currentDayNumber - 1].classList.add("completed");
+      buttons[currentDayNumber - 1].innerText += " ❌";
     }
-  });
+
+    goHome();
+  };
+
+  content.appendChild(finishBtn);
 }
 
 /* ===========================
    기능
 =========================== */
 
-function toggleBookmark(number) {
-  if (bookmarks.has(number)) {
-    bookmarks.delete(number);
-  } else {
-    bookmarks.add(number);
-  }
-  saveStorage();
-  renderWritingPage();
-}
-
 function toggleAnswer(number) {
-  const item = allSentences[number];
+  const item = currentSentences.find(i => i.number === number);
   const el = document.getElementById(`answer-${number}`);
+
   el.innerText = el.innerText ? "" : item.question;
 }
 
-/* ===========================
-   📌 북마크 (메인 전용)
-=========================== */
+function toggleBookmark(number) {
+  if (bookmarks.includes(number)) {
+    bookmarks = bookmarks.filter(n => n !== number);
+  } else {
+    bookmarks.push(number);
+  }
 
-function openBookmarks() {
-  loadStorage();
-
-  const data = [...bookmarks]
-    .map(n => allSentences[n])
-    .filter(Boolean);
-
-  document.getElementById("main-screen").classList.add("hidden");
-  document.getElementById("study-screen").classList.remove("hidden");
-
-  document.getElementById("day-title").innerText = "📌 북마크";
-
-  currentViewData = data;
-  renderWritingPage();
+  localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+  renderPage();
 }
 
 /* ===========================
