@@ -13,13 +13,15 @@
 <div id="main-screen">
   <h1>25일 영어 학습 4권</h1>
 
-  <!-- 🔥 북마크 버튼 (여기로 이동) -->
+  <!-- 📌 북마크 -->
   <div style="text-align:center; margin-bottom:20px;">
     <button onclick="openBookmarks()">📌 북마크</button>
   </div>
 
+  <!-- Day 버튼 -->
   <div id="day-buttons"></div>
 
+  <!-- 설명 -->
   <div style="margin-top:40px; text-align:center; font-size:14px; line-height:1.8; color:#444;">
     <p><strong> 꾸준하게만 합시다. 틀리는 걸 두려워하지 맙시다. </strong></p>
     <p><strong> 준비물 - 공책, ETS 음원 어플 </strong></p>
@@ -34,13 +36,9 @@
 <div id="study-screen" class="hidden">
   <button onclick="goHome()">← 메인으로</button>
 
-  <!-- ❌ 오답노트 제거 -->
-  <!-- ❌ 북마크 버튼 여기서 제거 (중복 방지) -->
-
   <h2 id="day-title"></h2>
 
-  <!-- 🔥 오늘 문제 번호 표시용 -->
-  <p id="today-numbers" style="font-size:14px; color:gray;"></p>
+  <!-- ❌ today-numbers 완전 제거 -->
 
   <div id="content"></div>
 </div>
