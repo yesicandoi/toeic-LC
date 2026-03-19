@@ -27,31 +27,29 @@ let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
 let allSentences = {};
 
 /* ===========================
-   전체 데이터 로드
+   전체 데이터 로드 (북마크용)
 =========================== */
 
 async function loadAllData() {
   allSentences = {};
 
-  for (let i = 1; i <= 9; i++) {
-    const res = await fetch(`data/day${i}.csv`);
-    const text = await res.text();
+  const res = await fetch(`data/all.csv`);
+  const text = await res.text();
 
-    const rows = text.trim().split(/\r?\n/).slice(1);
+  const rows = text.trim().split(/\r?\n/).slice(1);
 
-    rows.forEach(row => {
-      const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+  rows.forEach(row => {
+    const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
 
-      const item = {
-        question: cols[0].replace(/"/g, "").trim(),
-        answer: cols[1].replace(/"/g, "").trim(),
-        question_korean: cols[2].replace(/"/g, "").trim(),
-        number: cols[3].replace(/"/g, "").trim()
-      };
+    const item = {
+      question: cols[0].replace(/"/g, "").trim(),
+      answer: cols[1].replace(/"/g, "").trim(),
+      question_korean: cols[2].replace(/"/g, "").trim(),
+      number: cols[3].replace(/"/g, "").trim()
+    };
 
-      allSentences[item.number] = item;
-    });
-  }
+    allSentences[item.number] = item;
+  });
 }
 
 /* ===========================
@@ -69,17 +67,20 @@ async function startDay(dayNumber) {
 
   document.getElementById("day-title").innerText = "Day " + dayNumber;
 
-  const sheetIndex = Math.floor((dayNumber - 1) / 3) + 1;
-  const dayOffset = (dayNumber - 1) % 3;
-
-  const startIndex = dayOffset * 10;
+  const startIndex = (dayNumber - 1) * 10;
   const endIndex = startIndex + 10;
 
-  const response = await fetch(`data/day${sheetIndex}.csv`);
+  const response = await fetch(`data/day1.csv`);
   const text = await response.text();
 
   const rows = text.trim().split(/\r?\n/).slice(1);
   const selectedRows = rows.slice(startIndex, endIndex);
+
+  if (selectedRows.length < 10) {
+    alert("문제가 부족합니다.");
+    goHome();
+    return;
+  }
 
   currentSentences = selectedRows.map(row => {
     const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
