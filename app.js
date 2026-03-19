@@ -14,14 +14,17 @@ for (let i = 1; i <= totalDays; i++) {
   buttonsContainer.appendChild(btn);
 }
 
-let currentSentences = [];
-let allSentences = {}; // 🔥 number 기준 저장소
+/* ===========================
+   전역 상태
+=========================== */
 
-let currentDayNumber = 0;
-let mode = "normal";
+let currentSentences = [];
+let currentViewData = [];
+let allSentences = {};
 
 let bookmarks = new Set();
-let wrongAnswers = new Set();
+
+let currentDayNumber = 0;
 
 /* ===========================
    📥 Day 시작
@@ -30,12 +33,12 @@ let wrongAnswers = new Set();
 async function startDay(dayNumber) {
 
   currentDayNumber = dayNumber;
-  mode = "normal";
 
   loadStorage();
 
   document.getElementById("main-screen").classList.add("hidden");
   document.getElementById("study-screen").classList.remove("hidden");
+
   document.getElementById("day-title").innerText = "Day " + dayNumber;
 
   const sheetIndex = Math.floor((dayNumber - 1) / 3) + 1;
@@ -65,14 +68,16 @@ async function startDay(dayNumber) {
       number: cols[3].replace(/"/g, "").trim()
     };
 
-    allSentences[item.number] = item; // 🔥 누적 저장
+    allSentences[item.number] = item;
     return item;
   });
 
   saveAllSentences();
 
   showTodayNumbers();
-  renderWritingPage(currentSentences);
+
+  currentViewData = [...currentSentences]; // 🔥 핵심
+  renderWritingPage();
 }
 
 /* ===========================
@@ -89,17 +94,15 @@ function loadAllSentences() {
 
 function saveStorage() {
   localStorage.setItem("bookmarks", JSON.stringify([...bookmarks]));
-  localStorage.setItem("wrongAnswers", JSON.stringify([...wrongAnswers]));
 }
 
 function loadStorage() {
   bookmarks = new Set(JSON.parse(localStorage.getItem("bookmarks") || "[]"));
-  wrongAnswers = new Set(JSON.parse(localStorage.getItem("wrongAnswers") || "[]"));
   loadAllSentences();
 }
 
 /* ===========================
-   🔢 상단
+   🔢 상단 표시
 =========================== */
 
 function showTodayNumbers() {
@@ -109,35 +112,19 @@ function showTodayNumbers() {
 }
 
 /* ===========================
-   🧠 데이터 가져오기
+   ✏️ Writing
 =========================== */
 
-function getBookmarkData() {
-  return [...bookmarks]
-    .map(n => allSentences[n])
-    .filter(Boolean);
-}
-
-function getWrongData() {
-  return [...wrongAnswers]
-    .map(n => allSentences[n])
-    .filter(Boolean);
-}
-
-/* ===========================
-   ✏️ 공통 렌더
-=========================== */
-
-function renderWritingPage(data) {
+function renderWritingPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  if (!data || data.length === 0) {
+  if (!currentViewData.length) {
     content.innerHTML = "<p>문제가 없습니다</p>";
     return;
   }
 
-  data.forEach((item, idx) => {
+  currentViewData.forEach((item, idx) => {
     const div = document.createElement("div");
 
     div.innerHTML = `
@@ -157,30 +144,31 @@ function renderWritingPage(data) {
   const nav = document.createElement("div");
 
   nav.innerHTML = `
-    <button onclick="renderLCPage(currentViewData)">LC</button>
+    <button onclick="renderLCPage()">LC</button>
+    <br><br>
     <button onclick="goHome()">← 뒤로가기</button>
   `;
 
   content.appendChild(nav);
-
-  currentViewData = data; // 🔥 현재 데이터 유지
 }
 
 /* ===========================
    🎧 LC
 =========================== */
 
-let currentViewData = [];
+let shuffledAnswers = [];
 
-function renderLCPage(data) {
+function renderLCPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  const shuffled = data.map(i => i.answer).sort(() => Math.random() - 0.5);
+  shuffledAnswers = currentViewData
+    .map(i => i.answer)
+    .sort(() => Math.random() - 0.5);
 
-  data.forEach(item => {
+  currentViewData.forEach(item => {
 
-    const options = shuffled.map(a =>
+    const options = shuffledAnswers.map(a =>
       `<option value="${a}">${a}</option>`
     ).join("");
 
@@ -201,15 +189,15 @@ function renderLCPage(data) {
   const btns = document.createElement("div");
 
   btns.innerHTML = `
-    <button onclick="checkLC(currentViewData)">채점</button>
-    <button onclick="renderWritingPage(currentViewData)">← 뒤로</button>
+    <button onclick="checkLC()">채점</button>
+    <button onclick="renderWritingPage()">← 뒤로</button>
   `;
 
   content.appendChild(btns);
 }
 
-function checkLC(data) {
-  data.forEach(item => {
+function checkLC() {
+  currentViewData.forEach(item => {
     const selected = document.getElementById(`lc-${item.number}`).value;
     const result = document.getElementById(`result-${item.number}`);
 
@@ -217,11 +205,8 @@ function checkLC(data) {
       result.innerText = "정답";
     } else {
       result.innerText = "오답";
-      wrongAnswers.add(item.number);
     }
   });
-
-  saveStorage();
 }
 
 /* ===========================
@@ -235,7 +220,7 @@ function toggleBookmark(number) {
     bookmarks.add(number);
   }
   saveStorage();
-  renderWritingPage(currentViewData);
+  renderWritingPage();
 }
 
 function toggleAnswer(number) {
@@ -245,31 +230,23 @@ function toggleAnswer(number) {
 }
 
 /* ===========================
-   📌 메인 버튼용
+   📌 북마크 (메인 전용)
 =========================== */
 
 function openBookmarks() {
   loadStorage();
+
+  const data = [...bookmarks]
+    .map(n => allSentences[n])
+    .filter(Boolean);
 
   document.getElementById("main-screen").classList.add("hidden");
   document.getElementById("study-screen").classList.remove("hidden");
 
   document.getElementById("day-title").innerText = "📌 북마크";
 
-  const data = getBookmarkData();
-  renderWritingPage(data);
-}
-
-function openWrong() {
-  loadStorage();
-
-  document.getElementById("main-screen").classList.add("hidden");
-  document.getElementById("study-screen").classList.remove("hidden");
-
-  document.getElementById("day-title").innerText = "❌ 오답노트";
-
-  const data = getWrongData();
-  renderWritingPage(data);
+  currentViewData = data;
+  renderWritingPage();
 }
 
 /* ===========================
