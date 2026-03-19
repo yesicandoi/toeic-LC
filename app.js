@@ -1,4 +1,4 @@
-const totalDays = 25;
+const totalDays = 30;
 const buttonsContainer = document.getElementById("day-buttons");
 
 for (let i = 1; i <= totalDays; i++) {
@@ -67,13 +67,14 @@ async function startDay(dayNumber) {
 
   document.getElementById("day-title").innerText = "Day " + dayNumber;
 
-  const startIndex = (dayNumber - 1) * 10;
-  const endIndex = startIndex + 10;
-
   const response = await fetch(`data/day1.csv?v=${Date.now()}`);
   const text = await response.text();
 
   const rows = text.trim().split(/\r?\n/).slice(1);
+
+  const startIndex = (dayNumber - 1) * 10;
+  const endIndex = Math.min(startIndex + 10, rows.length);
+
   const selectedRows = rows.slice(startIndex, endIndex);
 
   currentSentences = selectedRows.map(row => {
@@ -122,7 +123,6 @@ function addBackButton(content) {
 
   btn.style.display = "block";
   btn.style.marginTop = "20px";
-  btn.style.marginLeft = "0";   // 🔥 왼쪽 정렬
   btn.style.textAlign = "left";
 
   btn.onclick = goHome;
@@ -329,24 +329,22 @@ function renderReviewPage() {
   const btn = document.createElement("button");
   btn.innerText = "Day 완료";
 
-   btn.onclick = () => {
+  btn.onclick = () => {
     if (!isBookmarkMode) {
       localStorage.setItem("day" + currentDayNumber, "completed");
-  
+
       const buttons = document.querySelectorAll("#day-buttons button");
+
       buttons[currentDayNumber - 1].classList.add("completed");
-      buttons[currentDayNumber - 1].innerText += " ❌";
+
+      if (!buttons[currentDayNumber - 1].innerText.includes("❌")) {
+        buttons[currentDayNumber - 1].innerText += " ❌";
+      }
     }
-  
-    // 🔥 안내창 추가
+
     alert("고생했습니다.\n꾸준하게만 하면 됩니다. 내일 봐요.");
-  
     goHome();
   };
-
-  content.appendChild(btn);
-  addBackButton(content);
-}
 
   content.appendChild(btn);
   addBackButton(content);
