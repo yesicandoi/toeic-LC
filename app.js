@@ -23,17 +23,12 @@ let currentDayNumber = 0;
 let isBookmarkMode = false;
 
 let pageStep = 0; 
-
 let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-
-/* ===========================
-   공통 데이터 (전체 문제 저장용)
-=========================== */
 
 let allSentences = {};
 
 /* ===========================
-   CSV 로딩 (전체 데이터용)
+   전체 데이터 로드
 =========================== */
 
 async function loadAllData() {
@@ -102,7 +97,7 @@ async function startDay(dayNumber) {
 }
 
 /* ===========================
-   📌 북마크 전체 보기 (메인에서 진입)
+   북마크
 =========================== */
 
 async function openBookmarks() {
@@ -124,30 +119,6 @@ async function openBookmarks() {
 }
 
 /* ===========================
-   🎲 랜덤 10개
-=========================== */
-
-async function startRandom10() {
-  await loadAllData();
-
-  isBookmarkMode = false;
-  pageStep = 0;
-
-  const all = Object.values(allSentences);
-
-  currentSentences = all
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 10);
-
-  document.getElementById("main-screen").classList.add("hidden");
-  document.getElementById("study-screen").classList.remove("hidden");
-
-  document.getElementById("day-title").innerText = "🎲 랜덤 10문제";
-
-  renderPage();
-}
-
-/* ===========================
    페이지 컨트롤
 =========================== */
 
@@ -161,23 +132,20 @@ function renderPage() {
 }
 
 /* ===========================
-   1️⃣ 문제 목록
+   1️⃣ 문제 목록 (문구 제거)
 =========================== */
 
 function renderIntroPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  if (!isBookmarkMode) {
-    const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
-    const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
+  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
+  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
 
-    content.innerHTML = `
-      <p><strong>오늘 문제</strong></p>
-      <p>1줄: ${first}</p>
-      <p>2줄: ${second}</p>
-    `;
-  }
+  content.innerHTML = `
+    <p>${first}</p>
+    <p>${second}</p>
+  `;
 
   const btn = document.createElement("button");
   btn.innerText = "학습 시작 →";
@@ -199,18 +167,20 @@ function renderStudyPage(start, end) {
 
   const data = currentSentences.slice(start, end);
 
-  data.forEach(item => {
+  data.forEach((item, idx) => {
 
     const isMarked = bookmarks.includes(item.number);
 
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${item.number}번. ${item.question_korean}</strong></p>
-      <button onclick="toggleAnswer('${item.number}')">정답 보기</button>
+      <p><strong>${start + idx + 1}. ${item.question_korean}</strong></p>
+      <input type="text" style="width:80%; padding:5px;">
+      <br>
       <button onclick="toggleBookmark('${item.number}')">
         ${isMarked ? "⭐" : "☆"}
       </button>
+      <button onclick="toggleAnswer('${item.number}')">정답 보기</button>
       <p id="answer-${item.number}" style="color:blue;"></p>
     `;
 
@@ -231,7 +201,7 @@ function renderStudyPage(start, end) {
 }
 
 /* ===========================
-   🎧 LC
+   🎧 LC (번호 형식 수정)
 =========================== */
 
 function renderLCPage(start, end) {
@@ -243,7 +213,7 @@ function renderLCPage(start, end) {
     .map(i => i.answer)
     .sort(() => Math.random() - 0.5);
 
-  data.forEach(item => {
+  data.forEach((item, idx) => {
 
     const options = shuffled.map(a =>
       `<option value="${a}">${a}</option>`
@@ -252,7 +222,7 @@ function renderLCPage(start, end) {
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${item.number}번. ${item.question}</strong></p>
+      <p><strong>${start + idx + 1}. ${item.question}</strong></p>
       <select id="lc-${item.number}">
         <option value="">선택</option>
         ${options}
@@ -269,7 +239,7 @@ function renderLCPage(start, end) {
     btn.innerText = "다음 (6~10) →";
     btn.onclick = () => { pageStep = 4; renderPage(); };
   } else {
-    btn.innerText = "오늘 공부 리뷰 →";
+    btn.innerText = "LC 마무리 →";
     btn.onclick = () => { pageStep = 5; renderPage(); };
   }
 
@@ -277,7 +247,7 @@ function renderLCPage(start, end) {
 }
 
 /* ===========================
-   5️⃣ 리뷰
+   5️⃣ 리뷰 (이름 변경 + 문구 제거)
 =========================== */
 
 function renderReviewPage() {
@@ -288,9 +258,9 @@ function renderReviewPage() {
   const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
 
   content.innerHTML = `
-    <p><strong>오늘 공부한 문제</strong></p>
-    <p>1줄: ${first}</p>
-    <p>2줄: ${second}</p>
+    <p><strong>LC 마무리</strong></p>
+    <p>${first}</p>
+    <p>${second}</p>
   `;
 
   const finishBtn = document.createElement("button");
