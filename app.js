@@ -1,4 +1,4 @@
-const totalDays = 27;
+const totalDays = 25;
 const buttonsContainer = document.getElementById("day-buttons");
 
 for (let i = 1; i <= totalDays; i++) {
