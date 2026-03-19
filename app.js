@@ -120,6 +120,11 @@ function addBackButton(content) {
   const btn = document.createElement("button");
   btn.innerText = "← 뒤로가기";
 
+  btn.style.display = "block";
+  btn.style.marginTop = "20px";
+  btn.style.marginLeft = "0";   // 🔥 왼쪽 정렬
+  btn.style.textAlign = "left";
+
   btn.onclick = goHome;
 
   content.appendChild(btn);
@@ -308,27 +313,40 @@ function renderReviewPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
+  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
+  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
+
   content.innerHTML = `
     <h1 style="color:red; font-size:28px;">
       1.2배속으로 듣기<br>
       영작틀린문제 / LC틀린문제는 북마크해서 반복
     </h1>
+
+    <p style="margin-top:20px;">${first}</p>
+    <p>${second}</p>
   `;
 
   const btn = document.createElement("button");
   btn.innerText = "Day 완료";
 
-  btn.onclick = () => {
+   btn.onclick = () => {
     if (!isBookmarkMode) {
       localStorage.setItem("day" + currentDayNumber, "completed");
-
+  
       const buttons = document.querySelectorAll("#day-buttons button");
       buttons[currentDayNumber - 1].classList.add("completed");
       buttons[currentDayNumber - 1].innerText += " ❌";
     }
-
+  
+    // 🔥 안내창 추가
+    alert("고생했습니다.\n꾸준하게만 하면 됩니다. 내일 봐요.");
+  
     goHome();
   };
+
+  content.appendChild(btn);
+  addBackButton(content);
+}
 
   content.appendChild(btn);
   addBackButton(content);
