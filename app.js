@@ -27,13 +27,13 @@ let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
 let allSentences = {};
 
 /* ===========================
-   전체 데이터 로드 (북마크용)
+   전체 데이터 로드
 =========================== */
 
 async function loadAllData() {
   allSentences = {};
 
-  const res = await fetch(`data/all.csv`);
+  const res = await fetch(`data/day1.csv?v=${Date.now()}`); // 🔥 캐시 방지
   const text = await res.text();
 
   const rows = text.trim().split(/\r?\n/).slice(1);
@@ -70,17 +70,11 @@ async function startDay(dayNumber) {
   const startIndex = (dayNumber - 1) * 10;
   const endIndex = startIndex + 10;
 
-  const response = await fetch(`data/day1.csv`);
+  const response = await fetch(`data/day1.csv?v=${Date.now()}`);
   const text = await response.text();
 
   const rows = text.trim().split(/\r?\n/).slice(1);
   const selectedRows = rows.slice(startIndex, endIndex);
-
-  if (selectedRows.length < 10) {
-    alert("문제가 부족합니다.");
-    goHome();
-    return;
-  }
 
   currentSentences = selectedRows.map(row => {
     const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
@@ -106,9 +100,7 @@ async function openBookmarks() {
   isBookmarkMode = true;
   pageStep = 0;
 
-  currentSentences = bookmarks
-    .map(n => allSentences[n])
-    .filter(Boolean);
+  currentSentences = bookmarks.map(n => allSentences[n]).filter(Boolean);
 
   document.getElementById("main-screen").classList.add("hidden");
   document.getElementById("study-screen").classList.remove("hidden");
@@ -124,15 +116,33 @@ async function openBookmarks() {
 
 function renderPage() {
   if (pageStep === 0) renderIntroPage();
-  else if (pageStep === 1) renderStudyPage(0, 5);
-  else if (pageStep === 2) renderStudyPage(5, 10);
-  else if (pageStep === 3) renderLCPage(0, 5);
-  else if (pageStep === 4) renderLCPage(5, 10);
+  else if (pageStep === 1) renderStudyPage(0, 5, 1);
+  else if (pageStep === 2) renderStudyPage(5, 10, 6);
+  else if (pageStep === 3) renderLCPage(0, 5, 1);
+  else if (pageStep === 4) renderLCPage(5, 10, 6);
   else if (pageStep === 5) renderReviewPage();
 }
 
 /* ===========================
-   1️⃣ 문제 목록
+   공통 뒤로가기
+=========================== */
+
+function addBackButton(content) {
+  if (pageStep === 0) return;
+
+  const backBtn = document.createElement("button");
+  backBtn.innerText = "← 뒤로가기";
+
+  backBtn.onclick = () => {
+    pageStep--;
+    renderPage();
+  };
+
+  content.appendChild(backBtn);
+}
+
+/* ===========================
+   문제 목록
 =========================== */
 
 function renderIntroPage() {
@@ -161,7 +171,7 @@ function renderIntroPage() {
    학습
 =========================== */
 
-function renderStudyPage(start, end) {
+function renderStudyPage(start, end, baseNumber) {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
@@ -174,7 +184,7 @@ function renderStudyPage(start, end) {
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${idx + 1}. ${item.question_korean}</strong></p>
+      <p><strong>${baseNumber + idx}. ${item.question_korean}</strong></p>
 
       <input type="text" style="width:80%; padding:5px;">
 
@@ -203,13 +213,14 @@ function renderStudyPage(start, end) {
   }
 
   content.appendChild(btn);
+  addBackButton(content);
 }
 
 /* ===========================
    LC
 =========================== */
 
-function renderLCPage(start, end) {
+function renderLCPage(start, end, baseNumber) {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
@@ -227,7 +238,7 @@ function renderLCPage(start, end) {
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${idx + 1}. ${item.question}</strong></p>
+      <p><strong>${baseNumber + idx}. ${item.question}</strong></p>
       <select>
         <option>선택</option>
         ${options}
@@ -243,11 +254,12 @@ function renderLCPage(start, end) {
     btn.innerText = "다음 →";
     btn.onclick = () => { pageStep = 4; renderPage(); };
   } else {
-    btn.innerText = "1.2배속 LC듣기 →";
+    btn.innerText = "리뷰 →";
     btn.onclick = () => { pageStep = 5; renderPage(); };
   }
 
   content.appendChild(btn);
+  addBackButton(content);
 }
 
 /* ===========================
@@ -258,13 +270,11 @@ function renderReviewPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
-  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
-
   content.innerHTML = `
-    <p><strong>LC 마무리</strong></p>
-    <p>${first}</p>
-    <p>${second}</p>
+    <h1 style="color:red; font-size:28px;">
+      1.2배속으로 듣기<br>
+      영작/LC 틀린 문제는 북마크해서 반복
+    </h1>
   `;
 
   const finishBtn = document.createElement("button");
@@ -283,6 +293,7 @@ function renderReviewPage() {
   };
 
   content.appendChild(finishBtn);
+  addBackButton(content);
 }
 
 /* ===========================
