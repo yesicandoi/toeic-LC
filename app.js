@@ -1,5 +1,5 @@
 const totalDays = 25;
-const DAILY_COUNT = 8; // 🔥 여기만 바꾸면 됨 (7,8,13 다 가능)
+const DAILY_COUNT = 10; // 🔥 여기만 바꾸면 됨 (7,8,13 다 가능)
 const SPLIT = Math.ceil(DAILY_COUNT / 2);
 
 const buttonsContainer = document.getElementById("day-buttons");
