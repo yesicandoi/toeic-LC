@@ -20,15 +20,8 @@ for (let i = 1; i <= totalDays; i++) {
 
 let currentSentences = [];
 let currentDayNumber = 0;
+let pageStep = 0;
 let isBookmarkMode = false;
-
-let pageStep = 0; 
-// 0: 목록
-// 1: 1줄
-// 2: 2줄
-// 3: LC 1줄
-// 4: LC 2줄
-// 5: 리뷰
 
 let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
 let allSentences = {};
@@ -164,7 +157,7 @@ function renderIntroPage() {
 }
 
 /* ===========================
-   2️⃣ 3️⃣ 학습
+   학습
 =========================== */
 
 function renderStudyPage(start, end) {
@@ -212,7 +205,7 @@ function renderStudyPage(start, end) {
 }
 
 /* ===========================
-   🎧 LC
+   LC
 =========================== */
 
 function renderLCPage(start, end) {
