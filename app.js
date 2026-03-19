@@ -1,4 +1,7 @@
 const totalDays = 25;
+const DAILY_COUNT = 8; // 🔥 여기만 바꾸면 됨 (7,8,13 다 가능)
+const SPLIT = Math.ceil(DAILY_COUNT / 2);
+
 const buttonsContainer = document.getElementById("day-buttons");
 
 for (let i = 1; i <= totalDays; i++) {
@@ -22,9 +25,9 @@ let currentSentences = [];
 let currentDayNumber = 0;
 let isBookmarkMode = false;
 
-let pageStep = 0; 
-let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+let pageStep = 0;
 
+let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
 let allSentences = {};
 
 /* ===========================
@@ -73,8 +76,8 @@ async function startDay(dayNumber) {
   const sheetIndex = Math.floor((dayNumber - 1) / 3) + 1;
   const dayOffset = (dayNumber - 1) % 3;
 
-  const startIndex = dayOffset * 10;
-  const endIndex = startIndex + 10;
+  const startIndex = dayOffset * DAILY_COUNT;
+  const endIndex = startIndex + DAILY_COUNT;
 
   const response = await fetch(`data/day${sheetIndex}.csv`);
   const text = await response.text();
@@ -110,11 +113,6 @@ async function openBookmarks() {
     .map(n => allSentences[n])
     .filter(Boolean);
 
-  document.getElementById("main-screen").classList.add("hidden");
-  document.getElementById("study-screen").classList.remove("hidden");
-
-  document.getElementById("day-title").innerText = "📌 북마크";
-
   renderPage();
 }
 
@@ -124,23 +122,23 @@ async function openBookmarks() {
 
 function renderPage() {
   if (pageStep === 0) renderIntroPage();
-  else if (pageStep === 1) renderStudyPage(0, 5);
-  else if (pageStep === 2) renderStudyPage(5, 10);
-  else if (pageStep === 3) renderLCPage(0, 5);
-  else if (pageStep === 4) renderLCPage(5, 10);
+  else if (pageStep === 1) renderStudyPage(0, SPLIT);
+  else if (pageStep === 2) renderStudyPage(SPLIT, DAILY_COUNT);
+  else if (pageStep === 3) renderLCPage(0, SPLIT);
+  else if (pageStep === 4) renderLCPage(SPLIT, DAILY_COUNT);
   else if (pageStep === 5) renderReviewPage();
 }
 
 /* ===========================
-   1️⃣ 문제 목록 (문구 제거)
+   1️⃣ 문제 목록
 =========================== */
 
 function renderIntroPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
-  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
+  const first = currentSentences.slice(0, SPLIT).map(i => i.number).join(", ");
+  const second = currentSentences.slice(SPLIT, DAILY_COUNT).map(i => i.number).join(", ");
 
   content.innerHTML = `
     <p>${first}</p>
@@ -158,7 +156,7 @@ function renderIntroPage() {
 }
 
 /* ===========================
-   2️⃣ 3️⃣ 학습 페이지
+   학습
 =========================== */
 
 function renderStudyPage(start, end) {
@@ -174,13 +172,18 @@ function renderStudyPage(start, end) {
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${start + idx + 1}. ${item.question_korean}</strong></p>
+      <p><strong>${idx + 1}. ${item.question_korean}</strong></p>
+
       <input type="text" style="width:80%; padding:5px;">
+
       <br>
+
       <button onclick="toggleBookmark('${item.number}')">
         ${isMarked ? "⭐" : "☆"}
       </button>
+
       <button onclick="toggleAnswer('${item.number}')">정답 보기</button>
+
       <p id="answer-${item.number}" style="color:blue;"></p>
     `;
 
@@ -190,7 +193,7 @@ function renderStudyPage(start, end) {
   const btn = document.createElement("button");
 
   if (pageStep === 1) {
-    btn.innerText = "다음 (6~10) →";
+    btn.innerText = "다음 →";
     btn.onclick = () => { pageStep = 2; renderPage(); };
   } else {
     btn.innerText = "LC 시작 →";
@@ -201,7 +204,7 @@ function renderStudyPage(start, end) {
 }
 
 /* ===========================
-   🎧 LC (번호 형식 수정)
+   LC
 =========================== */
 
 function renderLCPage(start, end) {
@@ -222,12 +225,11 @@ function renderLCPage(start, end) {
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${start + idx + 1}. ${item.question}</strong></p>
-      <select id="lc-${item.number}">
-        <option value="">선택</option>
+      <p><strong>${idx + 1}. ${item.question}</strong></p>
+      <select>
+        <option>선택</option>
         ${options}
       </select>
-      <p id="result-${item.number}"></p>
     `;
 
     content.appendChild(div);
@@ -236,10 +238,10 @@ function renderLCPage(start, end) {
   const btn = document.createElement("button");
 
   if (pageStep === 3) {
-    btn.innerText = "다음 (6~10) →";
+    btn.innerText = "다음 →";
     btn.onclick = () => { pageStep = 4; renderPage(); };
   } else {
-    btn.innerText = "LC 마무리 →";
+    btn.innerText = "1.2배속 LC듣기 →";
     btn.onclick = () => { pageStep = 5; renderPage(); };
   }
 
@@ -247,15 +249,15 @@ function renderLCPage(start, end) {
 }
 
 /* ===========================
-   5️⃣ 리뷰 (이름 변경 + 문구 제거)
+   리뷰
 =========================== */
 
 function renderReviewPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
-  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
+  const first = currentSentences.slice(0, SPLIT).map(i => i.number).join(", ");
+  const second = currentSentences.slice(SPLIT, DAILY_COUNT).map(i => i.number).join(", ");
 
   content.innerHTML = `
     <p><strong>LC 마무리</strong></p>
@@ -288,7 +290,6 @@ function renderReviewPage() {
 function toggleAnswer(number) {
   const item = currentSentences.find(i => i.number === number);
   const el = document.getElementById(`answer-${number}`);
-
   el.innerText = el.innerText ? "" : item.question;
 }
 
