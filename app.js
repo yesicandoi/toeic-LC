@@ -26,6 +26,9 @@ let isBookmarkMode = false;
 let bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
 let allSentences = {};
 
+// 🔥 정답 표시 상태 저장
+let revealedAnswers = new Set();
+
 /* ===========================
    전체 데이터 로드
 =========================== */
@@ -61,6 +64,7 @@ async function startDay(dayNumber) {
   isBookmarkMode = false;
   currentDayNumber = dayNumber;
   pageStep = 0;
+  revealedAnswers.clear(); // 🔥 초기화
 
   document.getElementById("main-screen").classList.add("hidden");
   document.getElementById("study-screen").classList.remove("hidden");
@@ -99,6 +103,7 @@ async function openBookmarks() {
   await loadAllData();
 
   isBookmarkMode = true;
+  revealedAnswers.clear(); // 🔥 초기화
 
   currentSentences = bookmarks
     .map(n => allSentences[n])
@@ -120,13 +125,8 @@ async function openBookmarks() {
 function addBackButton(content) {
   const btn = document.createElement("button");
   btn.innerText = "← 뒤로가기";
-
-  btn.style.display = "block";
   btn.style.marginTop = "20px";
-  btn.style.textAlign = "left";
-
   btn.onclick = goHome;
-
   content.appendChild(btn);
 }
 
@@ -147,22 +147,22 @@ function renderBookmarkPage() {
     div.innerHTML = `
       <p>
         <strong>${idx + 1}. ${item.question_korean}</strong>
-        <span style="color:gray; font-size:12px; margin-left:8px;">
-          (${item.number})
-        </span>
+        <span style="color:gray; font-size:12px; margin-left:8px;">(${item.number})</span>
       </p>
 
       <input type="text" style="width:80%; padding:5px;">
 
       <br>
 
-      <button onclick="toggleBookmark('${item.number}')">
+      <button onclick="toggleBookmark('${item.number}', this)">
         ${isMarked ? "⭐" : "☆"}
       </button>
 
       <button onclick="toggleAnswer('${item.number}')">정답 보기</button>
 
-      <p id="answer-${item.number}" style="color:blue;"></p>
+      <p id="answer-${item.number}" style="color:blue;">
+        ${revealedAnswers.has(item.number) ? item.question : ""}
+      </p>
     `;
 
     content.appendChild(div);
@@ -185,33 +185,7 @@ function renderPage() {
 }
 
 /* ===========================
-   문제 목록
-=========================== */
-
-function renderIntroPage() {
-  const content = document.getElementById("content");
-  content.innerHTML = "";
-
-  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
-  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
-
-  content.innerHTML = `
-    <p>${first}</p>
-    <p>${second}</p>
-  `;
-
-  const btn = document.createElement("button");
-  btn.innerText = "학습 시작 →";
-  btn.onclick = () => {
-    pageStep = 1;
-    renderPage();
-  };
-
-  content.appendChild(btn);
-}
-
-/* ===========================
-   학습
+   학습 (영작)
 =========================== */
 
 function renderStudyPage(start, end, base) {
@@ -227,19 +201,26 @@ function renderStudyPage(start, end, base) {
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${base + idx}. ${item.question_korean}</strong></p>
+      <p>
+        <strong>${base + idx}. ${item.question_korean}</strong>
+        <span style="color:gray; font-size:12px; margin-left:8px;">
+          (${item.number}회-${idx + 1})
+        </span>
+      </p>
 
       <input type="text" style="width:80%; padding:5px;">
 
       <br>
 
-      <button onclick="toggleBookmark('${item.number}')">
+      <button onclick="toggleBookmark('${item.number}', this)">
         ${isMarked ? "⭐" : "☆"}
       </button>
 
       <button onclick="toggleAnswer('${item.number}')">정답 보기</button>
 
-      <p id="answer-${item.number}" style="color:blue;"></p>
+      <p id="answer-${item.number}" style="color:blue;">
+        ${revealedAnswers.has(item.number) ? item.question : ""}
+      </p>
     `;
 
     content.appendChild(div);
@@ -260,7 +241,7 @@ function renderStudyPage(start, end, base) {
 }
 
 /* ===========================
-   LC
+   LC (채점 기능 추가)
 =========================== */
 
 function renderLCPage(start, end, base) {
@@ -281,11 +262,21 @@ function renderLCPage(start, end, base) {
     const div = document.createElement("div");
 
     div.innerHTML = `
-      <p><strong>${base + idx}. ${item.question}</strong></p>
-      <select>
+      <p>
+        <strong>${base + idx}. ${item.question}</strong>
+        <span style="color:gray; font-size:12px; margin-left:8px;">
+          (${item.number}회-${idx + 1})
+        </span>
+      </p>
+
+      <select id="lc-${item.number}">
         <option>선택</option>
         ${options}
       </select>
+
+      <button onclick="checkLC('${item.number}')">채점</button>
+
+      <div id="result-${item.number}" style="margin-top:5px;"></div>
     `;
 
     content.appendChild(div);
@@ -306,25 +297,45 @@ function renderLCPage(start, end, base) {
 }
 
 /* ===========================
+   LC 채점 함수
+=========================== */
+
+function checkLC(number) {
+  const select = document.getElementById(`lc-${number}`);
+  const result = document.getElementById(`result-${number}`);
+  const item = currentSentences.find(i => i.number === number);
+
+  if (!select.value || select.value === "선택") {
+    result.innerHTML = `<span style="color:gray;">선택해주세요</span>`;
+    return;
+  }
+
+  if (select.value === item.answer) {
+    result.innerHTML = `
+      <span style="color:green;">⭕ 정답</span><br>
+      <span style="color:blue;"> ${item.answer}</span>
+    `;
+  } else {
+    result.innerHTML = `
+      <span style="color:red;">❌ 오답</span><br>
+      <span style="color:blue;">정답: ${item.answer}</span>
+    `;
+
+      // 🔥 오답 자동 저장
+    if (!lcWrongs.includes(number)) {
+      lcWrongs.push(number);
+      localStorage.setItem("lcWrongs", JSON.stringify(lcWrongs));
+    }
+  }
+}
+
+/* ===========================
    리뷰
 =========================== */
 
 function renderReviewPage() {
   const content = document.getElementById("content");
   content.innerHTML = "";
-
-  const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
-  const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
-
-  content.innerHTML = `
-    <h1 style="color:red; font-size:28px;">
-      1.2배속으로 듣기<br>
-      영작틀린문제 / LC틀린문제는 북마크해서 반복
-    </h1>
-
-    <p style="margin-top:20px;">${first}</p>
-    <p>${second}</p>
-  `;
 
   const btn = document.createElement("button");
   btn.innerText = "Day 완료";
@@ -334,7 +345,6 @@ function renderReviewPage() {
       localStorage.setItem("day" + currentDayNumber, "completed");
 
       const buttons = document.querySelectorAll("#day-buttons button");
-
       buttons[currentDayNumber - 1].classList.add("completed");
 
       if (!buttons[currentDayNumber - 1].innerText.includes("❌")) {
@@ -342,7 +352,7 @@ function renderReviewPage() {
       }
     }
 
-    alert("고생했습니다.\n꾸준하게만 하면 됩니다. 내일 봐요.");
+    alert("고생했습니다.\n꾸준하게만 하면 됩니다. 다음에 또 봐요.");
     goHome();
   };
 
@@ -357,21 +367,133 @@ function renderReviewPage() {
 function toggleAnswer(number) {
   const item = currentSentences.find(i => i.number === number);
   const el = document.getElementById(`answer-${number}`);
-  el.innerText = el.innerText ? "" : item.question;
+
+  if (revealedAnswers.has(number)) {
+    revealedAnswers.delete(number);
+    el.innerText = "";
+  } else {
+    revealedAnswers.add(number);
+    el.innerText = item.question;
+  }
 }
 
-function toggleBookmark(number) {
+function toggleBookmark(number, btn) {
   if (bookmarks.includes(number)) {
     bookmarks = bookmarks.filter(n => n !== number);
+    btn.innerText = "☆";
   } else {
     bookmarks.push(number);
+    btn.innerText = "⭐";
   }
 
   localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
-
-  if (isBookmarkMode) renderBookmarkPage();
-  else renderPage();
 }
+
+
+/* ===========================
+   LC 오답노트
+=========================== */
+
+async function openLCWrongs() {
+  await loadAllData();
+
+  isBookmarkMode = false;
+  revealedAnswers.clear();
+
+  currentSentences = lcWrongs
+    .map(n => allSentences[n])
+    .filter(Boolean);
+
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("study-screen").classList.remove("hidden");
+
+  document.getElementById("day-title").innerText = "🎧 LC 오답노트";
+
+  renderLCWrongPage();
+}
+
+function getRandomOptions(correctAnswer) {
+  const allAnswers = Object.values(allSentences).map(i => i.answer);
+
+  const shuffled = allAnswers.sort(() => Math.random() - 0.5);
+
+  const options = new Set([correctAnswer]);
+
+  for (let a of shuffled) {
+    if (options.size >= 10) break;
+    options.add(a);
+  }
+
+  return Array.from(options).sort(() => Math.random() - 0.5);
+}
+
+function renderLCWrongPage() {
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  currentSentences.forEach((item, idx) => {
+
+    const options = getRandomOptions(item.answer)
+      .map(a => `<option value="${a}">${a}</option>`)
+      .join("");
+
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <p>
+        <strong>${idx + 1}. ${item.question}</strong>
+        <span style="color:gray; font-size:12px; margin-left:8px;">
+          (${item.number}회-${idx + 1})
+        </span>
+      </p>
+
+      <select id="wrong-${item.number}">
+        <option>선택</option>
+        ${options}
+      </select>
+
+      <button onclick="checkWrong('${item.number}')">채점</button>
+      <button onclick="removeWrong('${item.number}')">삭제</button>
+
+      <div id="wrong-result-${item.number}" style="margin-top:5px;"></div>
+    `;
+
+    content.appendChild(div);
+  });
+
+  addBackButton(content);
+}
+
+function checkWrong(number) {
+  const select = document.getElementById(`wrong-${number}`);
+  const result = document.getElementById(`wrong-result-${number}`);
+  const item = currentSentences.find(i => i.number === number);
+
+  if (!select.value || select.value === "선택") {
+    result.innerHTML = `<span style="color:gray;">선택해주세요</span>`;
+    return;
+  }
+
+  if (select.value === item.answer) {
+    result.innerHTML = `
+      <span style="color:green;">⭕ 정답</span><br>
+      <span style="color:blue;">정답: ${item.answer}</span>
+    `;
+  } else {
+    result.innerHTML = `
+      <span style="color:red;">❌ 오답</span><br>
+      <span style="color:blue;">정답: ${item.answer}</span>
+    `;
+  }
+}
+
+function removeWrong(number) {
+  lcWrongs = lcWrongs.filter(n => n !== number);
+  localStorage.setItem("lcWrongs", JSON.stringify(lcWrongs));
+
+  renderLCWrongPage();
+}
+
 
 /* ===========================
    기타
