@@ -1,6 +1,9 @@
 const totalDays = 30;
 const buttonsContainer = document.getElementById("day-buttons");
 
+/* ===========================
+   Day 버튼 생성
+=========================== */
 for (let i = 1; i <= totalDays; i++) {
   const btn = document.createElement("button");
   btn.innerText = "Day " + i;
@@ -14,7 +17,9 @@ for (let i = 1; i <= totalDays; i++) {
   buttonsContainer.appendChild(btn);
 }
 
-/* 상태 */
+/* ===========================
+   상태
+=========================== */
 let currentSentences = [];
 let currentDayNumber = 0;
 let pageStep = 0;
@@ -26,7 +31,9 @@ let lcWrongs = JSON.parse(localStorage.getItem("lcWrongs") || "[]");
 let allSentences = {};
 let revealedAnswers = new Set();
 
-/* 데이터 로드 */
+/* ===========================
+   데이터 로드
+=========================== */
 async function loadAllData() {
   const res = await fetch(`data/day1.csv?v=${Date.now()}`);
   const text = await res.text();
@@ -49,10 +56,13 @@ async function loadAllData() {
   });
 }
 
-/* Day 시작 */
+/* ===========================
+   Day 시작
+=========================== */
 async function startDay(dayNumber) {
   await loadAllData();
 
+  isBookmarkMode = false;
   currentDayNumber = dayNumber;
   pageStep = 0;
   revealedAnswers.clear();
@@ -70,7 +80,51 @@ async function startDay(dayNumber) {
   renderPage();
 }
 
-/* 페이지 흐름 */
+/* ===========================
+   북마크
+=========================== */
+async function openBookmarks() {
+  await loadAllData();
+
+  isBookmarkMode = true;
+  revealedAnswers.clear();
+
+  currentSentences = bookmarks
+    .map(n => allSentences[n])
+    .filter(Boolean);
+
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("study-screen").classList.remove("hidden");
+
+  document.getElementById("day-title").innerText = "📌 북마크";
+
+  renderBookmarkPage();
+}
+
+/* ===========================
+   LC 오답노트
+=========================== */
+async function openLCWrongs() {
+  await loadAllData();
+
+  isBookmarkMode = false;
+  revealedAnswers.clear();
+
+  currentSentences = lcWrongs
+    .map(n => allSentences[n])
+    .filter(Boolean);
+
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("study-screen").classList.remove("hidden");
+
+  document.getElementById("day-title").innerText = "🎧 LC 오답노트";
+
+  renderLCWrongPage();
+}
+
+/* ===========================
+   페이지 컨트롤
+=========================== */
 function renderPage() {
   if (pageStep === 0) renderIntroPage();
   else if (pageStep === 1) renderStudyPage(0, 5, 1);
@@ -80,10 +134,11 @@ function renderPage() {
   else if (pageStep === 5) renderReviewPage();
 }
 
-/* 🔥 문제 목록 (복구) */
+/* ===========================
+   문제 목록 (복구)
+=========================== */
 function renderIntroPage() {
   const content = document.getElementById("content");
-  content.innerHTML = "";
 
   const first = currentSentences.slice(0,5).map(i => i.number).join(", ");
   const second = currentSentences.slice(5,10).map(i => i.number).join(", ");
@@ -100,7 +155,9 @@ function renderIntroPage() {
   content.appendChild(btn);
 }
 
-/* 🔥 영작 */
+/* ===========================
+   영작
+=========================== */
 function renderStudyPage(start, end, base) {
   const content = document.getElementById("content");
   content.innerHTML = "";
@@ -141,7 +198,9 @@ function renderStudyPage(start, end, base) {
   addBackButton(content);
 }
 
-/* 🔥 LC (일괄 채점) */
+/* ===========================
+   LC (일괄 채점)
+=========================== */
 function renderLCPage(start, end, base) {
   const content = document.getElementById("content");
   content.innerHTML = "";
@@ -188,7 +247,9 @@ function renderLCPage(start, end, base) {
   addBackButton(content);
 }
 
-/* 🔥 LC 일괄 채점 */
+/* ===========================
+   LC 채점
+=========================== */
 function checkAllLC() {
   currentSentences.forEach(item => {
     const select = document.getElementById(`lc-${item.number}`);
@@ -210,7 +271,67 @@ function checkAllLC() {
   localStorage.setItem("lcWrongs", JSON.stringify(lcWrongs));
 }
 
-/* 🔥 리뷰 (복구) */
+/* ===========================
+   LC 오답노트
+=========================== */
+function renderLCWrongPage() {
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  currentSentences.forEach((item, idx) => {
+
+    const options = Object.values(allSentences)
+      .slice(0, 10)
+      .map(i => `<option value="${i.answer}">${i.answer}</option>`)
+      .join("");
+
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <p>
+        <strong>${idx + 1}. ${item.question}</strong>
+        <span style="color:gray;">(${item.number})</span>
+      </p>
+
+      <select id="wrong-${item.number}">
+        <option>선택</option>
+        ${options}
+      </select>
+
+      <button onclick="checkWrong('${item.number}')">채점</button>
+
+      <button onclick="removeWrong('${item.number}', this)">⭐</button>
+
+      <p id="wrong-result-${item.number}" style="color:blue;"></p>
+    `;
+
+    content.appendChild(div);
+  });
+
+  addBackButton(content);
+}
+
+function checkWrong(number) {
+  const select = document.getElementById(`wrong-${number}`);
+  const result = document.getElementById(`wrong-result-${number}`);
+  const item = currentSentences.find(i => i.number === number);
+
+  if (select.value === item.answer) {
+    result.innerText = item.answer;
+  } else {
+    result.innerText = item.answer;
+  }
+}
+
+function removeWrong(number, btn) {
+  lcWrongs = lcWrongs.filter(n => n !== number);
+  localStorage.setItem("lcWrongs", JSON.stringify(lcWrongs));
+  btn.innerText = "☆";
+}
+
+/* ===========================
+   리뷰 (복구)
+=========================== */
 function renderReviewPage() {
   const content = document.getElementById("content");
 
@@ -232,7 +353,7 @@ function renderReviewPage() {
 
   btn.onclick = () => {
     localStorage.setItem("day" + currentDayNumber, "completed");
-    alert("고생했습니다. 내일도 이어서!");
+    alert("고생했습니다.");
     goHome();
   };
 
@@ -240,7 +361,9 @@ function renderReviewPage() {
   addBackButton(content);
 }
 
-/* 기능 */
+/* ===========================
+   기능
+=========================== */
 function toggleAnswer(number) {
   const item = currentSentences.find(i => i.number === number);
   const el = document.getElementById(`answer-${number}`);
@@ -277,6 +400,9 @@ function addBackButton(content) {
 }
 
 function goHome() {
+  isBookmarkMode = false;
+  revealedAnswers.clear();
+
   document.getElementById("study-screen").classList.add("hidden");
   document.getElementById("main-screen").classList.remove("hidden");
 }
