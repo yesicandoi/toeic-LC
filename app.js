@@ -135,7 +135,7 @@ function renderPage() {
 }
 
 /* ===========================
-   문제 목록 (복구)
+   문제 목록
 =========================== */
 function renderIntroPage() {
   const content = document.getElementById("content");
@@ -173,7 +173,6 @@ function renderStudyPage(start, end, base) {
       </p>
 
       <input type="text" style="width:80%; padding:5px;">
-
       <br>
 
       <button onclick="toggleBookmark('${item.number}', this)">
@@ -199,7 +198,7 @@ function renderStudyPage(start, end, base) {
 }
 
 /* ===========================
-   LC (일괄 채점)
+   LC
 =========================== */
 function renderLCPage(start, end, base) {
   const content = document.getElementById("content");
@@ -248,7 +247,7 @@ function renderLCPage(start, end, base) {
 }
 
 /* ===========================
-   LC 채점
+   LC 채점 (🔥 수정 핵심)
 =========================== */
 function checkAllLC() {
   currentSentences.forEach(item => {
@@ -258,9 +257,9 @@ function checkAllLC() {
     if (!select) return;
 
     if (select.value === item.answer) {
-      result.innerText = item.answer;
+      result.innerHTML = `⭕ 정답<br>${item.answer}`;
     } else {
-      result.innerText = item.answer;
+      result.innerHTML = `❌ 오답<br>${item.answer}`;
 
       if (!lcWrongs.includes(item.number)) {
         lcWrongs.push(item.number);
@@ -299,7 +298,6 @@ function renderLCWrongPage() {
       </select>
 
       <button onclick="checkWrong('${item.number}')">채점</button>
-
       <button onclick="removeWrong('${item.number}', this)">⭐</button>
 
       <p id="wrong-result-${item.number}" style="color:blue;"></p>
@@ -311,15 +309,16 @@ function renderLCWrongPage() {
   addBackButton(content);
 }
 
+/* 🔥 오답노트 채점 수정 */
 function checkWrong(number) {
   const select = document.getElementById(`wrong-${number}`);
   const result = document.getElementById(`wrong-result-${number}`);
   const item = currentSentences.find(i => i.number === number);
 
   if (select.value === item.answer) {
-    result.innerText = item.answer;
+    result.innerHTML = `⭕ 정답<br>${item.answer}`;
   } else {
-    result.innerText = item.answer;
+    result.innerHTML = `❌ 오답<br>${item.answer}`;
   }
 }
 
@@ -330,7 +329,7 @@ function removeWrong(number, btn) {
 }
 
 /* ===========================
-   리뷰 (복구)
+   리뷰
 =========================== */
 function renderReviewPage() {
   const content = document.getElementById("content");
@@ -353,7 +352,17 @@ function renderReviewPage() {
 
   btn.onclick = () => {
     localStorage.setItem("day" + currentDayNumber, "completed");
-    alert("고생했습니다.");
+
+    // 🔥 즉시 X 표시
+    const buttons = document.querySelectorAll("#day-buttons button");
+    const target = buttons[currentDayNumber - 1];
+
+    if (target && !target.innerText.includes("❌")) {
+      target.classList.add("completed");
+      target.innerText += " ❌";
+    }
+
+    alert("고생했습니다.\n다음에 또 봐요.");
     goHome();
   };
 
